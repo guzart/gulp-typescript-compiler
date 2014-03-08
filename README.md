@@ -9,6 +9,8 @@ Typescript plugin for gulp
       return gulp
         .src('app/{,/*}*.ts')
         .pipe(tsc({
+            module: 'commonjs',
+            target: 'ES5',
             sourcemap: true
         }))
         .pipe(gulp.dest('dist'));
