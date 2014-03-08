@@ -21,6 +21,8 @@
   },
   "homepage": "https://github.com/guzart/gulp-typescript",
   "dependencies": {
-    "typescript-api": "^0.9.7"
+    "typescript-api": "^0.9.7",
+    "gulp-util": "^2.2.14",
+    "through2": "^0.4.1"
   }
 }
