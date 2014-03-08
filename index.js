@@ -1,45 +1,28 @@
+/* jshint latedef: false */
 'use strict';
 
-var path = require('path');
-var Buffer = require('buffer').Buffer;
+// var path = require('path');
+// var es = require('event-stream');
+
 var gutil = require('gulp-util');
 var through = require('through2');
 var ts = require('typescript-api');
 
 
-// var es = require('event-stream');
-// var Buffer = require('buffer').Buffer;
+module.exports = tsPugin;
 
-module.exports = function (opt) {
+
+function tsPugin(options) {
+
+    var settings = buildSettings(options);
     var filename = 'typestring.ts';
 
-    function compile(input) {
-        // var logger = ;
-        // var settings = ;
-        var compiler = new ts.TypeScriptCompiler();
-        
-        var snapshot = ts.ScriptSnapshot.fromString(input);
-        compiler.addFile(filename, snapshot);
-
-        var iter = compiler.compile();
-
-        var output = '';
-        while (iter.moveNext()) {
-            var current = iter.current().outputFiles[0];
-            output += !!current ? current.text : '';
-        }
-
-        var diagnostics = compiler.getSemanticDiagnostics(filename);
-        if (!output && diagnostics.length) {
-            throw new Error(diagnostics[0].text());
-        }
-        gutil.log('input: ' + input);
-        gutil.log('output: ' + output);
-        return output;
-    }
+    return through.obj(objectStream);
 
 
-    return through.obj(function (file, enc, cb) {
+    function objectStream(file, enc, cb) {
+    /* jshint validthis: true */
+
         if (file.isNull()) {
             this.push(file);
             return cb();
@@ -60,5 +43,39 @@ module.exports = function (opt) {
 
         this.push(file);
         cb();
-    });
-};
+    }
+
+
+    function buildSettings(opts) {
+        var st = new ts.CompilationSettings();
+        if (opts) {
+            st.mapSourceFiles = opts.sourcemap === true;
+        }
+        return ts.ImmutableCompilationSettings.fromCompilationSettings(st);
+    }
+
+
+    function compile(input) {
+        var logger = new ts.NullLogger();
+        var compiler = new ts.TypeScriptCompiler(logger, settings);
+
+        var snapshot = ts.ScriptSnapshot.fromString(input);
+        compiler.addFile(filename, snapshot);
+
+        var iter = compiler.compile();
+
+        var output = '';
+        while (iter.moveNext()) {
+            var current = iter.current().outputFiles[0];
+            output += !!current ? current.text : '';
+        }
+
+        var diagnostics = compiler.getSemanticDiagnostics(filename);
+        if (!output && diagnostics.length) {
+            throw new Error(diagnostics[0].text());
+        }
+
+        compiler.removeFile(filename);
+        return output;
+    }
+}
