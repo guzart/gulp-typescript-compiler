@@ -94,6 +94,8 @@ function buildSettings(opts) {
 
         st.mapSourceFiles = opts.sourcemap !== false;
     }
+    st.syntacticErrors = true;
+    st.semanticErrors = false;
     return ts.ImmutableCompilationSettings.fromCompilationSettings(st);
 }
 
@@ -124,8 +126,13 @@ function compile(file, settings) {
     }
 
     var errors = [];
-    var diagnostics = compiler.getSemanticDiagnostics(file.path);
-    diagnostics = diagnostics.concat(compiler.getSyntacticDiagnostics(file.path));
+    var diagnostics = [];
+    if (settings.syntacticErrors) {
+        diagnostics = diagnostics.concat(compiler.getSyntacticDiagnostics(file.path));
+    }
+    if (settings.semanticErrors) {
+        diagnostics = diagnostics.concat(compiler.getSemanticDiagnostics(file.path));
+    }
     diagnostics.forEach(function (d) {
         errors.push({ path: file.path, message: d.text(), line: d.line() });
     });
