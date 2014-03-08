@@ -86,13 +86,13 @@ function pluginError(msg) {
 function buildSettings(opts) {
     var st = new ts.CompilationSettings();
     if (opts) {
-        var target = (opts.target || 'es3').toLowerCase();
+        var target = (opts.target || 'es5').toLowerCase();
         st.codeGenTarget = target === 'es3' ? 0 : target === 'es5' ? 1 : opts.target;
 
         var module = (opts.module || '').toLowerCase();
         st.moduleGenTarget = module === 'commonjs' ? 1 : module === 'amd' ? 2 : 0;
 
-        st.mapSourceFiles = opts.sourcemap === true;
+        st.mapSourceFiles = opts.sourcemap !== false;
     }
     return ts.ImmutableCompilationSettings.fromCompilationSettings(st);
 }
