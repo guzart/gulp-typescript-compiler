@@ -15,7 +15,6 @@ module.exports = tsPugin;
 function tsPugin(options) {
 
     var settings = buildSettings(options);
-    var filename = 'typestring.ts';
 
     return through.obj(objectStream);
 
@@ -29,53 +28,57 @@ function tsPugin(options) {
         }
 
         if (file.isStream()) {
-            this.emit('error', new gutil.PluginError('gulp-typescript', 'Streaming not supported'));
+            this.emit('error', error('Streaming not supported'));
             return cb();
         }
 
         try {
-            file.contents = new Buffer(compile(file.contents.toString()));
+            var result = compile(file, settings);
+            file.contents = new Buffer(result.contents);
             file.path = gutil.replaceExtension(file.path, '.js');
         } catch (err) {
             err.fileName = file.path;
-            this.emit('error', new gutil.PluginError('gulp-typescript', err));
+            this.emit('error', error(err));
         }
 
         this.push(file);
         cb();
     }
+}
+
+function error(msg) {
+    return new gutil.PluginError('gulp-typescript', msg);
+}
 
 
-    function buildSettings(opts) {
-        var st = new ts.CompilationSettings();
-        if (opts) {
-            st.mapSourceFiles = opts.sourcemap === true;
-        }
-        return ts.ImmutableCompilationSettings.fromCompilationSettings(st);
+function buildSettings(opts) {
+    var st = new ts.CompilationSettings();
+    if (opts) {
+        st.mapSourceFiles = opts.sourcemap === true;
+    }
+    return ts.ImmutableCompilationSettings.fromCompilationSettings(st);
+}
+
+
+function compile(file, settings) {
+    var logger = new ts.NullLogger();
+    var compiler = new ts.TypeScriptCompiler(logger, settings);
+
+    var snapshot = ts.ScriptSnapshot.fromString(file.contents.toString());
+    compiler.addFile(file.path, snapshot);
+
+    var iter = compiler.compile();
+
+    var output = '';
+    while (iter.moveNext()) {
+        var current = iter.current().outputFiles[0];
+        output += !!current ? current.text : '';
     }
 
-
-    function compile(input) {
-        var logger = new ts.NullLogger();
-        var compiler = new ts.TypeScriptCompiler(logger, settings);
-
-        var snapshot = ts.ScriptSnapshot.fromString(input);
-        compiler.addFile(filename, snapshot);
-
-        var iter = compiler.compile();
-
-        var output = '';
-        while (iter.moveNext()) {
-            var current = iter.current().outputFiles[0];
-            output += !!current ? current.text : '';
-        }
-
-        var diagnostics = compiler.getSemanticDiagnostics(filename);
-        if (!output && diagnostics.length) {
-            throw new Error(diagnostics[0].text());
-        }
-
-        compiler.removeFile(filename);
-        return output;
+    var diagnostics = compiler.getSemanticDiagnostics(file.path);
+    if (!output && diagnostics.length) {
+        error(diagnostics[0].text());
     }
+
+    return { contents: output };
 }
