@@ -29,11 +29,11 @@ function tsPugin(options) {
         }
 
         try {
-            var result = compile(file, settings);
-            file.contents = new Buffer(result.contents);
+            var data = compile(file, settings);
+            file.contents = new Buffer(data.contents);
             file.path = gutil.replaceExtension(file.path, '.js');
             if (options.sourcemap) {
-                sourcemap = buildSourcemapFile(file, result.sourcemap);
+                sourcemap = buildSourcemapFile(file, data.sourcemap);
             }
         } catch (err) {
             err.fileName = file.path;
@@ -67,6 +67,12 @@ function error(msg) {
 function buildSettings(opts) {
     var st = new ts.CompilationSettings();
     if (opts) {
+        var target = (opts.target || 'es3').toLowerCase();
+        st.codeGenTarget = target === 'es3' ? 0 : target === 'es5' ? 1 : opts.target;
+
+        var module = (opts.module || '').toLowerCase();
+        st.moduleGenTarget = module === 'commonjs' ? 1 : module === 'amd' ? 2 : 0;
+
         st.mapSourceFiles = opts.sourcemap === true;
     }
     return ts.ImmutableCompilationSettings.fromCompilationSettings(st);
