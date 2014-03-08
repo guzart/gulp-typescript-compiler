@@ -1,6 +1,7 @@
 /* jshint latedef: false */
 'use strict';
 
+var path = require('path');
 var gutil = require('gulp-util');
 var through = require('through2');
 var ts = require('typescript-api');
@@ -15,8 +16,9 @@ function tsPugin(options) {
 
 
     function objectStream(file, enc, cb) {
-    /* jshint validthis: true */
-        var sourcemap;
+        /* jshint validthis: true */
+
+        var _this = this;
 
         if (file.isNull()) {
             this.push(file);
@@ -24,10 +26,11 @@ function tsPugin(options) {
         }
 
         if (file.isStream()) {
-            this.emit('error', error('Streaming not supported'));
+            _this.emit('error', pluginError('Streaming not supported'));
             return cb();
         }
 
+        var sourcemap;
         try {
             var data = compile(file, settings);
             file.contents = new Buffer(data.contents);
@@ -35,14 +38,21 @@ function tsPugin(options) {
             if (options.sourcemap) {
                 sourcemap = buildSourcemapFile(file, data.sourcemap);
             }
+            data.errors.forEach(function (errorData) {
+                if (options.logErrors !== false) {
+                    logError(errorData);
+                } else {
+                    _this.emit('error', pluginError(errorData.message));
+                }
+            });
         } catch (err) {
             err.fileName = file.path;
-            this.emit('error', error(err));
+            _this.emit('error', pluginError(err));
         }
 
-        this.push(file);
+        _this.push(file);
         if (sourcemap) {
-            this.push(sourcemap);
+            _this.push(sourcemap);
         }
 
         cb();
@@ -58,8 +68,17 @@ function buildSourcemapFile(source, content) {
     });
 }
 
+function logError(error) {
+    gutil.log(
+        gutil.colors.red('Error:'),
+        error.message.replace(/\.$/, ''),
+        'on',
+        gutil.colors.cyan(path.relative(process.cwd(), error.path)),
+        gutil.colors.magenta('line ' + error.line)
+    );
+}
 
-function error(msg) {
+function pluginError(msg) {
     return new gutil.PluginError('gulp-typescript', msg);
 }
 
@@ -87,13 +106,14 @@ function compile(file, settings) {
     compiler.addFile(file.path, snapshot);
 
     var it = compiler.compile();
-
     var output = '';
     var sourcemap = '';
+    var result, ix, current;
     while (it.moveNext()) {
-        var result = it.current();
-        for (var i = 0; i < result.outputFiles.length; i++) {
-            var current = result.outputFiles[i];
+        result = it.current();
+
+        for (ix = 0; ix < result.outputFiles.length; ix++) {
+            current = result.outputFiles[ix];
             if (!current) { continue; }
             if (/\.map$/.test(current.name)) {
                 sourcemap += current.text;
@@ -103,10 +123,12 @@ function compile(file, settings) {
         }
     }
 
+    var errors = [];
     var diagnostics = compiler.getSemanticDiagnostics(file.path);
-    if (!output && diagnostics.length) {
-        error(diagnostics[0].text());
-    }
+    diagnostics = diagnostics.concat(compiler.getSyntacticDiagnostics(file.path));
+    diagnostics.forEach(function (d) {
+        errors.push({ path: file.path, message: d.text(), line: d.line() });
+    });
 
-    return { contents: output, sourcemap: sourcemap };
+    return { contents: output, sourcemap: sourcemap, errors: errors };
 }
