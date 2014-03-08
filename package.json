@@ -1,6 +1,6 @@
 {
-  "name": "gulp-typescript",
-  "version": "0.0.1",
+  "name": "gulp-typescript-compiler",
+  "version": "0.0.0",
   "description": "Typescript plugin for gulp",
   "main": "index.js",
   "scripts": {
@@ -8,7 +8,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/guzart/gulp-typescript.git"
+    "url": "git://github.com/guzart/gulp-typescript-compiler.git"
   },
   "keywords": [
     "typescript",
@@ -17,9 +17,9 @@
   "author": "Arturo Guzman",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/guzart/gulp-typescript/issues"
+    "url": "https://github.com/guzart/gulp-typescript-compiler/issues"
   },
-  "homepage": "https://github.com/guzart/gulp-typescript",
+  "homepage": "https://github.com/guzart/gulp-typescript-compiler",
   "dependencies": {
     "typescript-api": "^0.9.7",
     "gulp-util": "^2.2.14",
