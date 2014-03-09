@@ -6,9 +6,9 @@ var gutil = require('gulp-util');
 var through = require('through2');
 var ts = require('typescript-api');
 
-module.exports = tsPugin;
+module.exports = tsPlugin;
 
-function tsPugin(options) {
+function tsPlugin(options) {
 
     var settings = buildSettings(options);
 
