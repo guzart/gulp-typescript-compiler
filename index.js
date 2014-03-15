@@ -35,7 +35,7 @@ function tsPlugin(options) {
             var data = compile(file, settings);
             file.contents = new Buffer(data.contents);
             file.path = gutil.replaceExtension(file.path, '.js');
-            if (options.sourcemap) {
+            if (settings.mapSourceFiles()) {
                 sourcemap = buildSourcemapFile(file, data.sourcemap);
             }
             data.errors.forEach(function (errorData) {
