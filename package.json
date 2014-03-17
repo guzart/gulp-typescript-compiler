@@ -12,7 +12,8 @@
   },
   "keywords": [
     "typescript",
-    "gulp"
+    "gulp",
+    "gulpplugin"
   ],
   "author": "Arturo Guzman",
   "license": "MIT",
