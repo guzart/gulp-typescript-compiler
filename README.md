@@ -37,6 +37,29 @@ Based of <a href="https://github.com/sindresorhus/gulp-typescript">gulp-typescri
         .pipe(gulp.dest('dist'));
     });
 
+**or just the entry point to your app**
+
+    var gulp = require('gulp');
+    var tsc  = require('gulp-typescript-compiler');
+
+    gulp.task('default', function () {
+      return gulp
+        .src('app/main.ts', {read: false})
+        .pipe(tsc({
+            resolve: true
+        }))
+        .pipe(gulp.dest('dist'));
+    });
+
+#### options.resolve
+
+Type: `boolean`  
+Default: `false`  
+_optional_
+
+Specify if the file(s) should resolve required files.
+By setting this to true the plugin will add to the buffered files
+all the other imported files.
 
 #### options.module
 
