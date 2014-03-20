@@ -1,16 +1,25 @@
 /* jshint latedef: false */
 'use strict';
 
+var fs = require('fs');
 var path = require('path');
 var gutil = require('gulp-util');
 var through = require('through2');
 var ts = require('typescript-api');
 
+var settings;
+var batchCompiler;
+
 module.exports = tsPlugin;
 
 function tsPlugin(options) {
 
-    var settings = buildSettings(options);
+    settings = buildSettings(options);
+    if (!settings.noResolve()) {
+        batchCompiler = new ts.BatchCompiler(ts.IO);
+        batchCompiler.logger = new ts.NullLogger();
+        batchCompiler.compilationSettings = settings;
+    }
 
     return through.obj(objectStream);
 
@@ -20,7 +29,7 @@ function tsPlugin(options) {
 
         var _this = this;
 
-        if (file.isNull()) {
+        if (file.isNull() && settings.noResolve()) {
             this.push(file);
             return cb();
         }
@@ -30,42 +39,37 @@ function tsPlugin(options) {
             return cb();
         }
 
-        var sourcemap;
+        var inputFiles = [file];
+        var outputFiles = [];
+        if (!settings.noResolve()) {
+            inputFiles = resolveFile(file);
+        }
+
         try {
-            var data = compile(file, settings);
-            file.contents = new Buffer(data.contents);
-            file.path = gutil.replaceExtension(file.path, '.js');
-            if (settings.mapSourceFiles()) {
-                sourcemap = buildSourcemapFile(file, data.sourcemap);
-            }
-            data.errors.forEach(function (errorData) {
-                if (options.logErrors !== false) {
-                    logError(errorData);
-                } else {
-                    _this.emit('error', pluginError(errorData.message));
-                }
+            inputFiles.forEach(function (input) {
+                var data = compile(input, settings);
+                if (data.file) { outputFiles.push(data.file); }
+                if (data.sourcemap) { outputFiles.push(data.sourcemap); }
+                data.errors.forEach(function (errorData) {
+                    if (options.logErrors !== false) {
+                        logError(errorData);
+                    } else {
+                        _this.emit('error', pluginError(errorData.message));
+                    }
+                });
+            });
+
+            outputFiles.forEach(function (rf) {
+                _this.push(rf);
             });
         } catch (err) {
             err.fileName = file.path;
             _this.emit('error', pluginError(err));
-        }
-
-        _this.push(file);
-        if (sourcemap) {
-            _this.push(sourcemap);
+            _this.push(file);
         }
 
         cb();
     }
-}
-
-function buildSourcemapFile(source, content) {
-    return new gutil.File({
-        base: source.base,
-        cwd: source.cwd,
-        path: gutil.replaceExtension(source.path, '.js.map'),
-        contents: new Buffer(content)
-    });
 }
 
 function logError(error) {
@@ -93,12 +97,36 @@ function buildSettings(opts) {
         st.moduleGenTarget = module === 'commonjs' ? 1 : module === 'amd' ? 2 : 0;
 
         st.mapSourceFiles = opts.sourcemap !== false;
+
+        st.noResolve = opts.resolve !== true;
     }
     st.syntacticErrors = true;
     st.semanticErrors = false;
     return ts.ImmutableCompilationSettings.fromCompilationSettings(st);
 }
 
+function resolveFile(file) {
+    var result = [];
+    var content, output;
+
+    batchCompiler.resolvedFiles = [];
+    batchCompiler.inputFiles = [file.path];
+    batchCompiler.resolve();
+    batchCompiler.resolvedFiles.forEach(function (rf) {
+        if (!/\.d\.ts$/.test(rf.path)) {
+            content = fs.readFileSync(rf.path, {encoding: 'utf8'});
+            output = new gutil.File({
+                base: file.base,
+                cwd: file.cwd,
+                path: rf.path,
+                contents: new Buffer(content)
+            });
+            result.push(output);
+        }
+    });
+
+    return result;
+}
 
 function compile(file, settings) {
     var logger = new ts.NullLogger();
@@ -137,5 +165,23 @@ function compile(file, settings) {
         errors.push({ path: file.path, message: d.text(), line: d.line() });
     });
 
-    return { contents: output, sourcemap: sourcemap, errors: errors };
+
+    var cFile = new gutil.File({
+        base: file.base,
+        cwd: file.cwd,
+        path: gutil.replaceExtension(file.path, '.js'),
+        contents: new Buffer(output)
+    });
+
+    var smFile;
+    if (sourcemap !== '') {
+        smFile = new gutil.File({
+            base: file.base,
+            cwd: file.cwd,
+            path: gutil.replaceExtension(file.path, '.js.map'),
+            contents: new Buffer(sourcemap)
+        });
+    }
+
+    return { file: cFile, sourcemap: smFile, errors: errors };
 }
