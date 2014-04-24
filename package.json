@@ -25,5 +25,9 @@
     "typescript-api": "^1.0.0",
     "gulp-util": "^2.2.14",
     "through2": "^0.4.1"
+  },
+  "devDependencies": {
+    "gulp": "^3.6.2",
+    "gulp-clean": "^0.2.4"
   }
 }
