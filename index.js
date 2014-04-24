@@ -93,7 +93,7 @@ function buildSettings(opts) {
         var target = (opts.target || 'es5').toLowerCase();
         st.codeGenTarget = target === 'es3' ? 0 : target === 'es5' ? 1 : opts.target;
 
-        var module = (opts.module || '').toLowerCase();
+        var module = (opts.module || 'commonjs').toLowerCase();
         st.moduleGenTarget = module === 'commonjs' ? 1 : module === 'amd' ? 2 : 0;
 
         st.mapSourceFiles = opts.sourcemap !== false;

@@ -4,13 +4,13 @@ gulp-typescript-compiler
 ## Information
 
 <table>
-<tr> 
+<tr>
 <td>Package</td><td>gulp-typescript-compiler</td>
 </tr>
 <tr>
 <td>Description</td>
 <td>Typescript plugin for gulp.<br>
-Based of <a href="https://github.com/sindresorhus/gulp-typescript">gulp-typescript</a> and 
+Based of <a href="https://github.com/sindresorhus/gulp-typescript">gulp-typescript</a> and
 <a href="https://github.com/gavinhungry/typestring">typestring</a>
 </td>
 </tr>
@@ -64,7 +64,7 @@ all the other imported files.
 #### options.module
 
 Type: `string`  
-Default: `''`  
+Default: `'commonjs'`  
 _optional_
 
 Specify module code generation: 'commonjs' or 'amd'.
