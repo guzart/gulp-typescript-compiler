@@ -22,7 +22,7 @@
   },
   "homepage": "https://github.com/guzart/gulp-typescript-compiler",
   "dependencies": {
-    "typescript-api": "^0.9.7",
+    "typescript-api": "^1.0.0",
     "gulp-util": "^2.2.14",
     "through2": "^0.4.1"
   }
