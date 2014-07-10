@@ -1,6 +1,6 @@
 {
   "name": "gulp-typescript-compiler",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Typescript plugin for gulp",
   "main": "index.js",
   "scripts": {
