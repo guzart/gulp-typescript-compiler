@@ -1,25 +1,26 @@
 'use strict';
 
-var gulp = require('gulp');
-var tsc  = require('..');
+var gulp   = require('gulp');
+var tsc    = require('..');
+var rimraf = require('gulp-rimraf');
 
 
 function compile() {
-  gulp
-    .src('app/main.ts', { read: false })
+  gulp.src('app/main.ts', { read: false })
     .pipe(tsc({
-        resolve: true
+      target:    'es5',
+      module:    'commonjs',
+      sourcemap: true,
+      resolve:   true
     }))
     .pipe(gulp.dest('dist'))
-    .on('close', run);
+    .on('finish', run);
 }
 
 function start() {
-  var clean = require('gulp-clean');
-  var cleanPromise = gulp
-    .src('dist', {read: false})
-    .pipe(clean())
-    .on('close', compile);
+  gulp.src('dist', { read: false })
+    .pipe(rimraf())
+    .on('finish', compile);
 }
 
 function run() {

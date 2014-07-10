@@ -1,11 +1,11 @@
 /* jshint latedef: false */
 'use strict';
 
-var fs = require('fs');
-var path = require('path');
-var gutil = require('gulp-util');
+var fs      = require('fs');
+var path    = require('path');
+var gutil   = require('gulp-util');
 var through = require('through2');
-var ts = require('typescript-api');
+var ts      = require('typescript-api');
 
 var settings;
 var batchCompiler;
@@ -100,8 +100,7 @@ function buildSettings(opts) {
 
         st.noResolve = opts.resolve !== true;
     }
-    st.syntacticErrors = true;
-    st.semanticErrors = false;
+    st.gatherDiagnostics = true;
     return ts.ImmutableCompilationSettings.fromCompilationSettings(st);
 }
 
@@ -155,11 +154,15 @@ function compile(file, settings) {
 
     var errors = [];
     var diagnostics = [];
-    if (settings.syntacticErrors) {
+    if (settings.gatherDiagnostics) {
         diagnostics = diagnostics.concat(compiler.getSyntacticDiagnostics(file.path));
-    }
-    if (settings.semanticErrors) {
-        diagnostics = diagnostics.concat(compiler.getSemanticDiagnostics(file.path));
+        // XXX: tsc does has a lot of work in order to resolve all the files, and I couldn't
+        // find a way to use the BatchCompiler API without reimplementing lot of code.
+        // I believe this resolution is what makes tsc "slow", which is fine if you want to compile once
+        // but if you are compiling a large project, using browserify for development then it's not
+        // good.
+        //
+        // diagnostics = diagnostics.concat(compiler.getSemanticDiagnostics(file.path));
     }
     diagnostics.forEach(function (d) {
         errors.push({ path: file.path, message: d.text(), line: d.line() });
