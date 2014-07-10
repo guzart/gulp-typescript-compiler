@@ -99,6 +99,8 @@ function buildSettings(opts) {
         st.mapSourceFiles = opts.sourcemap !== false;
 
         st.noResolve = opts.resolve !== true;
+
+        st.noLib = opts.defaultLib !== false;
     }
     st.gatherDiagnostics = true;
     return ts.ImmutableCompilationSettings.fromCompilationSettings(st);
@@ -127,64 +129,87 @@ function resolveFile(file) {
     return result;
 }
 
+function Compiler(file, settings) {
+  ts.BatchCompiler.apply(this);
+  this.logger = new ts.NullLogger();
+  this.file = file;
+  this.inputFiles.push(file.path);
+  this.compilationSettings = settings;
+  this.ioHost = ts.IO;
+}
+Compiler.prototype = new ts.BatchCompiler(ts.IO);
+Compiler.prototype.getDefaultLibraryFilePath = function () {
+  return this.resolvePath(ts.IOUtils.combine(__dirname, 'node_modules', 'typescript', 'bin', 'lib.d.ts'));
+};
+Compiler.prototype.compile = function () {
+  var self       = this;
+  var file       = self.file;
+  var tsCompiler = new ts.TypeScriptCompiler(self.logger, self.settings);
+
+  self.resolvedFiles.forEach(function (resolvedFile) {
+      var sourceFile = self.getSourceFile(resolvedFile.path);
+      tsCompiler.addFile(
+        resolvedFile.path, sourceFile.scriptSnapshot, sourceFile.byteOrderMark,
+        0, false, resolvedFile.referencedFiles);
+  });
+
+  var snapshot = ts.ScriptSnapshot.fromString(file.contents.toString());
+  tsCompiler.addFile(file.path, snapshot);
+
+  var it = tsCompiler.compile(function (path) {
+      return self.resolvePath(path);
+  });
+
+  var output = '';
+  var sourcemap = '';
+  var result, ix, current;
+  while (it.moveNext()) {
+      result = it.current();
+
+      for (ix = 0; ix < result.outputFiles.length; ix++) {
+          current = result.outputFiles[ix];
+          if (!current) { continue; }
+          if (/\.map$/.test(current.name)) {
+              sourcemap += current.text;
+          } else {
+              output += current.text;
+          }
+      }
+  }
+
+  var errors = [];
+  var diagnostics = [];
+  if (settings.gatherDiagnostics) {
+      diagnostics = diagnostics.concat(tsCompiler.getSyntacticDiagnostics(file.path));
+      diagnostics = diagnostics.concat(tsCompiler.getSemanticDiagnostics(file.path));
+  }
+  diagnostics.forEach(function (d) {
+      errors.push({ path: file.path, message: d.text(), line: d.line() });
+  });
+
+
+  var cFile = new gutil.File({
+      base: file.base,
+      cwd: file.cwd,
+      path: gutil.replaceExtension(file.path, '.js'),
+      contents: new Buffer(output)
+  });
+
+  var smFile;
+  if (sourcemap !== '') {
+      smFile = new gutil.File({
+          base: file.base,
+          cwd: file.cwd,
+          path: gutil.replaceExtension(file.path, '.js.map'),
+          contents: new Buffer(sourcemap)
+      });
+  }
+
+  return { file: cFile, sourcemap: smFile, errors: errors };
+};
+
 function compile(file, settings) {
-    var logger = new ts.NullLogger();
-    var compiler = new ts.TypeScriptCompiler(logger, settings);
-
-    var snapshot = ts.ScriptSnapshot.fromString(file.contents.toString());
-    compiler.addFile(file.path, snapshot);
-
-    var it = compiler.compile();
-    var output = '';
-    var sourcemap = '';
-    var result, ix, current;
-    while (it.moveNext()) {
-        result = it.current();
-
-        for (ix = 0; ix < result.outputFiles.length; ix++) {
-            current = result.outputFiles[ix];
-            if (!current) { continue; }
-            if (/\.map$/.test(current.name)) {
-                sourcemap += current.text;
-            } else {
-                output += current.text;
-            }
-        }
-    }
-
-    var errors = [];
-    var diagnostics = [];
-    if (settings.gatherDiagnostics) {
-        diagnostics = diagnostics.concat(compiler.getSyntacticDiagnostics(file.path));
-        // XXX: tsc does has a lot of work in order to resolve all the files, and I couldn't
-        // find a way to use the BatchCompiler API without reimplementing lot of code.
-        // I believe this resolution is what makes tsc "slow", which is fine if you want to compile once
-        // but if you are compiling a large project, using browserify for development then it's not
-        // good.
-        //
-        // diagnostics = diagnostics.concat(compiler.getSemanticDiagnostics(file.path));
-    }
-    diagnostics.forEach(function (d) {
-        errors.push({ path: file.path, message: d.text(), line: d.line() });
-    });
-
-
-    var cFile = new gutil.File({
-        base: file.base,
-        cwd: file.cwd,
-        path: gutil.replaceExtension(file.path, '.js'),
-        contents: new Buffer(output)
-    });
-
-    var smFile;
-    if (sourcemap !== '') {
-        smFile = new gutil.File({
-            base: file.base,
-            cwd: file.cwd,
-            path: gutil.replaceExtension(file.path, '.js.map'),
-            contents: new Buffer(sourcemap)
-        });
-    }
-
-    return { file: cFile, sourcemap: smFile, errors: errors };
+    var compiler = new Compiler(file, settings);
+    compiler.resolve();
+    return compiler.compile(file);
 }

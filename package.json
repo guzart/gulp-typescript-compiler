@@ -22,9 +22,10 @@
   },
   "homepage": "https://github.com/guzart/gulp-typescript-compiler",
   "dependencies": {
-    "typescript-api": "^1.0.0",
     "gulp-util": "^2.2.14",
-    "through2": "^0.5.1"
+    "through2": "^0.5.1",
+    "typescript": "^1.0.1",
+    "typescript-api": "^1.0.0"
   },
   "devDependencies": {
     "gulp": "^3.6.2",

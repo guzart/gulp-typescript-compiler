@@ -85,6 +85,14 @@ _optional_
 
 Generates corresponding .map file.
 
+#### options.defaultLib
+
+Type: `boolean`  
+Default: `true`  
+_optional_
+
+Includes the default `lib.d.ts` library.
+
 #### logErrors
 
 Type: `boolean`  
