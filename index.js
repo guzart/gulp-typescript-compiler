@@ -13,6 +13,7 @@ var batchCompiler;
 module.exports = tsPlugin;
 
 function tsPlugin(options) {
+    options = options || {};
 
     settings = buildSettings(options);
     if (!settings.noResolve()) {
